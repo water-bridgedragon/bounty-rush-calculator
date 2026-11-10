@@ -1,0 +1,994 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>通常攻撃ダメージ計算ツール</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 20px;
+  background: #f1f3f6;
+  color: #222;
+  font-family: "Segoe UI", "Meiryo", sans-serif;
+}
+
+.container {
+  max-width: 1050px;
+  margin: auto;
+}
+
+h1 { font-size: 25px; }
+h2 { font-size: 19px; margin-top: 0; }
+h3 { font-size: 16px; }
+
+.panel {
+  background: white;
+  padding: 18px;
+  border-radius: 12px;
+  margin: 16px 0;
+  box-shadow: 0 2px 8px #00000012;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.field label {
+  display: block;
+  font-size: 13px;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+input, select {
+  width: 100%;
+  padding: 9px;
+  border: 1px solid #bbb;
+  border-radius: 7px;
+  font-size: 15px;
+  background: white;
+}
+
+input[type="checkbox"] { width: auto; }
+
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: 14px;
+}
+
+.checks label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+
+button {
+  border: 0;
+  padding: 11px 20px;
+  border-radius: 8px;
+  background: #333;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  margin-right: 6px;
+}
+
+button:hover { opacity: .85; }
+
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.result {
+  border-radius: 9px;
+  padding: 14px;
+  background: #f2f4f7;
+}
+
+.result strong {
+  display: block;
+  font-size: 12px;
+  color: #555;
+  margin-bottom: 7px;
+}
+
+.result span {
+  font-size: 23px;
+  font-weight: bold;
+}
+
+.hit-card {
+  padding: 14px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.hit1 {
+  background: #dceeff;
+  border-left: 7px solid #2684d9;
+}
+
+.hit2 {
+  background: #e5f5df;
+  border-left: 7px solid #48a33c;
+}
+
+.hit3 {
+  background: #fff0d8;
+  border-left: 7px solid #e59a21;
+}
+
+.hit-title {
+  font-size: 17px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.hit-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  font-size: 14px;
+}
+
+.hit-values b { font-size: 18px; }
+
+.note {
+  color: #666;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+th, td {
+  border-bottom: 1px solid #ddd;
+  padding: 10px 7px;
+  text-align: center;
+}
+
+th { background: #f2f4f7; }
+
+.prob-bar {
+  height: 14px;
+  background: #e7e7e7;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 5px;
+}
+
+.prob-fill {
+  height: 100%;
+  background: #397fc4;
+}
+
+.warning {
+  color: #b34a20;
+  font-weight: bold;
+}
+
+.hp-bar {
+  height: 35px;
+  width: 100%;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+  border-radius: 7px;
+  background: #ddd;
+  border: 1px solid #aaa;
+}
+
+.hp-remaining {
+  height: 100%;
+  background: #42b85a;
+}
+
+.hp-variation {
+  height: 100%;
+  background: #f3cf42;
+}
+
+.hp-damage {
+  height: 100%;
+  background: #e84b4b;
+}
+
+.hp-average-marker,
+.hp-max-marker {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  z-index: 2;
+}
+
+.hp-average-marker {
+  width: 3px;
+  background: white;
+  box-shadow: 0 0 2px #333;
+}
+
+.hp-max-marker {
+  width: 2px;
+  background: black;
+}
+
+.hp-labels {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.hp-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  margin-top: 12px;
+  font-size: 12px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legend-color {
+  width: 13px;
+  height: 13px;
+  border-radius: 3px;
+}
+
+@media(max-width: 600px) {
+  body { padding: 10px; }
+  .panel { padding: 13px; }
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h1>通常攻撃ダメージ計算ツール</h1>
+
+<p class="note">
+通常攻撃の1～3段目を繰り返した場合のダメージと撃破確率を計算します。
+</p>
+
+<!-- ① 攻撃側ステータス -->
+<div class="panel">
+<h2>① 攻撃側ステータス</h2>
+
+<div class="grid">
+
+  <div class="field">
+    <label>攻撃力（基礎値）</label>
+    <input id="atkBase" type="number" value="10000">
+  </div>
+
+  <div class="field">
+    <label>ブースト</label>
+    <input id="atkBoost" type="number" value="0">
+  </div>
+
+  <div class="field">
+    <label>オーバーブースト</label>
+    <input id="atkOver" type="number" value="0">
+  </div>
+
+  <div class="field">
+    <label>サポート（%）</label>
+    <input id="atkSupport" type="number" value="160">
+  </div>
+
+  <div class="field">
+    <label>メダル（%）</label>
+    <input id="atkMedalRate" type="number" value="70">
+  </div>
+
+  <div class="field">
+    <label>メダル固定加算値</label>
+    <input id="atkMedalFlat" type="number" value="0">
+  </div>
+
+  <div class="field">
+    <label>キャラタイプ</label>
+    <input id="atkType" type="number" value="0">
+  </div>
+
+  <div class="field">
+    <label>攻撃力上昇（%）</label>
+    <input id="atkBuff" type="number" value="0">
+  </div>
+
+  <div class="field">
+    <label>攻撃力減少（%）</label>
+    <input id="atkDebuff" type="number" value="0">
+  </div>
+
+  <div class="field">
+    <label>攻撃側属性</label>
+    <select id="atkAttribute">
+      <option value="red">赤</option>
+      <option value="blue">青</option>
+      <option value="green">緑</option>
+      <option value="white">白</option>
+      <option value="black">黒</option>
+    </select>
+  </div>
+
+</div>
+
+<div class="checks">
+  <label>
+    <input id="ignoreDefense" type="checkbox">
+    防御力無視
+  </label>
+
+  <label>
+    <input id="ignoreReduction" type="checkbox">
+    ダメージ減少無視
+  </label>
+</div>
+</div>
+
+<!-- ② 防御側ステータス -->
+<div class="panel">
+<h2>② 防御側ステータス</h2>
+
+<h3>防御力</h3>
+
+<div class="grid">
+
+  <div class="field">
+    <label>防御力（基礎値）</label>
+    <input id="defBase" type="number" value="5000">
+  </div>
+
+  <div class="field">
+    <label>ブースト</label>
+    <input id="defBoost" type="number" value="0">
+  </div>
+
+  <div class="field">
+    <label>オーバーブースト</label>
+    <input id="defOver" type="number" value="0">
+  </div>
+
+  <div class="field">
+    <label>サポート（%）</label>
+    <input id="defSupport" type="number" value="160">
+  </div>
+
+  <div class="field">
+    <label>メダル（%）</label>
+    <input id="defMedalRate" type="number" value="70">
+  </div>
+
+  <div class="field">
+    <label>メダル固定加算値</label>
+    <input id="defMedalFlat" type="number" value="0">
+  </div>
+
+  <div class="field">
+    <label>キャラタイプ</label>
+    <input id="defType" type="number" value="0">
+  </div>
+
+  <div class="field">
+    <label>防御力上昇（%）</label>
+    <input id="defBuff" type="number" value="0">
+  </div>
+
+  <div class="field">
+    <label>防御力減少（%）</label>
+    <input id="defDebuff" type="number" value="0">
+  </div>
+
+  <div class="field">
+    <label>防御側属性</label>
+    <select id="defAttribute">
+      <option value="red">赤</option>
+      <option value="blue">青</option>
+      <option value="green">緑</option>
+      <option value="white">白</option>
+      <option value="black">黒</option>
+    </select>
+  </div>
+
+</div>
+
+<hr>
+
+<h3>HP</h3>
+
+<div class="grid">
+
+  <div class="field">
+    <label>HP（基礎値）</label>
+    <input id="hpBase" type="number" value="30000">
+  </div>
+
+  <div class="field">
+    <label>ブースト</label>
+    <input id="hpBoost" type="number" value="0">
+  </div>
+
+  <div class="field">
+    <label>オーバーブースト</label>
+    <input id="hpOver" type="number" value="0">
+  </div>
+
+  <div class="field">
+    <label>サポート（%）</label>
+    <input id="hpSupport" type="number" value="160">
+  </div>
+
+  <div class="field">
+    <label>メダル（%）</label>
+    <input id="hpMedalRate" type="number" value="70">
+  </div>
+
+  <div class="field">
+    <label>メダル固定加算値</label>
+    <input id="hpMedalFlat" type="number" value="0">
+  </div>
+
+  <div class="field">
+    <label>キャラタイプ</label>
+    <input id="hpType" type="number" value="0">
+  </div>
+
+</div>
+
+<p class="note">
+HPには攻撃力・防御力の上昇・減少補正は適用しません。
+計算した最終HPを相手の最大HPとして使用します。
+</p>
+</div>
+
+<!-- ③ ダメージ補正 -->
+<div class="panel">
+<h2>③ ダメージ補正</h2>
+
+<div class="grid">
+
+  <div class="field">
+    <label>ダメージ増加（%）</label>
+    <input id="damageIncrease" type="number" value="0">
+  </div>
+
+  <div class="field">
+    <label>ダメージ減少（%）</label>
+    <input id="damageDecrease" type="number" value="0">
+  </div>
+
+  <div class="field">
+    <label>固定ダメージ（1セットにつき）</label>
+    <input id="fixedDamage" type="number" value="0">
+  </div>
+
+  <div class="field">
+    <label>割合ダメージ（1セットにつき・%）</label>
+    <input id="percentDamage" type="number" value="0">
+  </div>
+
+</div>
+
+<p class="note">
+固定ダメージ・割合ダメージは1～3段目の1セットにつき1回だけ加算します。
+割合ダメージは計算した相手の最大HPを基準にします。
+</p>
+</div>
+
+<!-- ④ 計算結果 -->
+<div class="panel">
+<h2>④ 計算結果</h2>
+
+<div class="result-grid">
+
+  <div class="result">
+    <strong>最終攻撃力</strong>
+    <span id="finalAtk">-</span>
+  </div>
+
+  <div class="result">
+    <strong>最終防御力</strong>
+    <span id="finalDef">-</span>
+  </div>
+
+  <div class="result">
+    <strong>最終HP</strong>
+    <span id="finalHP">-</span>
+  </div>
+
+  <div class="result">
+    <strong>1セットの固定・割合加算</strong>
+    <span id="setBonus">-</span>
+  </div>
+
+</div>
+</div>
+
+<!-- ⑤ 各段のダメージ -->
+<div class="panel">
+<h2>⑤ 各段のダメージ</h2>
+
+<div id="hitResults"></div>
+
+<p class="note">
+ダメージは1回ごとに整数に切り捨てています。
+乱数90～110%を使用した場合の最小・平均・最大値を表示します。
+3段目には1セット分の固定・割合ダメージが加算されます。
+</p>
+</div>
+
+<!-- ⑥ HPバー -->
+<div class="panel">
+<h2>⑥ 1セット終了時のHPバー</h2>
+
+<div class="hp-bar">
+  <div class="hp-remaining" id="hpRemaining"></div>
+  <div class="hp-variation" id="hpVariation"></div>
+  <div class="hp-damage" id="hpDamage"></div>
+  <div class="hp-average-marker" id="hpAverageMarker"></div>
+  <div class="hp-max-marker" id="hpMaxMarker"></div>
+</div>
+
+<div class="hp-labels">
+  <span id="remainingHPText">残りHP：-</span>
+  <span id="setDamageText">1セットの平均ダメージ：-</span>
+</div>
+
+<div class="hp-legend">
+  <div class="legend-item">
+    <div class="legend-color" style="background:#42b85a"></div>
+    残りHP
+  </div>
+
+  <div class="legend-item">
+    <div class="legend-color" style="background:#f3cf42"></div>
+    乱数による変動
+  </div>
+
+  <div class="legend-item">
+    <div class="legend-color" style="background:#e84b4b"></div>
+    最小ダメージ部分
+  </div>
+
+  <div class="legend-item">
+    <div class="legend-color" style="background:white;border:1px solid #555"></div>
+    平均ダメージ位置
+  </div>
+
+  <div class="legend-item">
+    <div class="legend-color" style="background:black"></div>
+    最大ダメージ位置
+  </div>
+</div>
+
+<p class="note">
+緑は残りHP、黄色は乱数による変動部分、赤は最小ダメージ部分です。
+白線は平均、黒線は最大ダメージ時の境界です。
+</p>
+</div>
+
+<!-- ⑦ 撃破判定 -->
+<div class="panel">
+<h2>⑦ 撃破判定</h2>
+
+<div class="result-grid">
+
+  <div class="result">
+    <strong>確定撃破</strong>
+    <span id="guaranteed">-</span>
+  </div>
+
+  <div class="result">
+    <strong>乱数による撃破回数</strong>
+    <span id="hitRange">-</span>
+  </div>
+
+</div>
+
+<div id="probabilityResults"></div>
+
+<p class="note">
+確率は各攻撃の乱数が90～110%の21通りから均等に選ばれ、
+攻撃ごとに独立しているものとして計算しています。
+</p>
+</div>
+
+<div class="panel">
+<button onclick="calculate()">再計算</button>
+<button onclick="resetValues()">初期値に戻す</button>
+</div>
+
+</div>
+
+<script>
+const attributeTable = {
+  red: {
+    red: 0,
+    blue: -30,
+    green: 30,
+    white: -20,
+    black: 20
+  },
+  blue: {
+    red: 30,
+    blue: 0,
+    green: -30,
+    white: -20,
+    black: 20
+  },
+  green: {
+    red: -30,
+    blue: 30,
+    green: 0,
+    white: -20,
+    black: 20
+  },
+  white: {
+    red: 20,
+    blue: 20,
+    green: 20,
+    white: 0,
+    black: -40
+  },
+  black: {
+    red: -20,
+    blue: -20,
+    green: -20,
+    white: 40,
+    black: 0
+  }
+};
+
+const $ = id => document.getElementById(id);
+
+function num(id) {
+  const v = Number($(id).value);
+  return Number.isFinite(v) ? v : 0;
+}
+
+function fmt(v) {
+  return Math.floor(v).toLocaleString("ja-JP");
+}
+
+/* ステータス計算 */
+function calculateStat(prefix, withBuff) {
+  const base = num(prefix + "Base");
+  const boost = num(prefix + "Boost");
+  const over = num(prefix + "Over");
+  const support = num(prefix + "Support");
+  const medalRate = num(prefix + "MedalRate");
+  const medalFlat = num(prefix + "MedalFlat");
+  const type = num(prefix + "Type");
+
+  const boosted = base + boost + over;
+  const supportValue = boosted * support / 100;
+  const medalValue = base * medalRate / 100;
+
+  let result =
+    supportValue +
+    medalValue +
+    medalFlat +
+    type;
+
+  if (withBuff) {
+    const buff = num(prefix + "Buff");
+    const debuff = num(prefix + "Debuff");
+
+    result *= (1 + buff / 100);
+    result *= Math.max(0, 1 - debuff / 100);
+  }
+
+  return Math.max(0, result);
+}
+
+/* 属性倍率 */
+function getAttributeMultiplier() {
+  const atk = $("atkAttribute").value;
+  const def = $("defAttribute").value;
+
+  return 1 + attributeTable[atk][def] / 100;
+}
+
+/* 各段の基本ダメージ */
+function getHitBaseDamage(attack, defense, ratio, multiplier) {
+  const A = attack;
+  const B = $("ignoreDefense").checked ? 0 : defense;
+
+  // 通常攻撃の計算式：2A-B
+  const raw = Math.max(0, 2 * A - B);
+
+  const increase = num("damageIncrease");
+
+  const decrease = $("ignoreReduction").checked
+    ? 0
+    : Math.max(0, Math.min(100, num("damageDecrease")));
+
+  const damageMultiplier =
+    (1 + increase / 100) * (1 - decrease / 100);
+
+  return Math.max(
+    0,
+    raw * ratio * multiplier * damageMultiplier
+  );
+}
+
+/* メイン計算 */
+function calculate() {
+  const attack = calculateStat("atk", true);
+  const defense = calculateStat("def", true);
+
+  // HPは上昇・減少補正なしで計算
+  const enemyHP = Math.max(1, calculateStat("hp", false));
+
+  const attributeMultiplier = getAttributeMultiplier();
+
+  const ratios = [0.275, 0.325, 0.40];
+  const ratioLabels = ["27.5%", "32.5%", "40%"];
+  const names = ["1段目", "2段目", "3段目"];
+  const classes = ["hit1", "hit2", "hit3"];
+
+  const fixed = Math.max(0, num("fixedDamage"));
+  const percent = Math.max(0, num("percentDamage"));
+
+  // 割合ダメージは計算後の最大HPを基準にする
+  const percentValue = Math.floor(enemyHP * percent / 100);
+  const setBonus = Math.floor(fixed + percentValue);
+
+  const hitBase = ratios.map(r =>
+    getHitBaseDamage(
+      attack,
+      defense,
+      r,
+      attributeMultiplier
+    )
+  );
+
+  $("finalAtk").textContent = fmt(attack);
+  $("finalDef").textContent = fmt(defense);
+  $("finalHP").textContent = fmt(enemyHP);
+  $("setBonus").textContent = fmt(setBonus);
+
+  /* 各段のダメージ */
+  let html = "";
+
+  for (let i = 0; i < 3; i++) {
+    const min = Math.floor(hitBase[i] * 0.90);
+    const avg = Math.floor(hitBase[i]);
+    const max = Math.floor(hitBase[i] * 1.10);
+
+    // 固定・割合ダメージは3段目に1セット分だけ加算
+    const extra = i === 2 ? setBonus : 0;
+
+    html += `
+      <div class="hit-card ${classes[i]}">
+        <div class="hit-title">
+          ${names[i]}（${ratioLabels[i]}）
+        </div>
+
+        <div class="hit-values">
+          <div>最小<br><b>${fmt(min + extra)}</b></div>
+          <div>平均<br><b>${fmt(avg + extra)}</b></div>
+          <div>最大<br><b>${fmt(max + extra)}</b></div>
+        </div>
+
+        ${
+          i === 2 && setBonus > 0
+          ? `<p class="note">セット加算：${fmt(setBonus)}</p>`
+          : ""
+        }
+      </div>
+    `;
+  }
+
+  $("hitResults").innerHTML = html;
+
+  /* 1セットのHPバー */
+  const setMin =
+    Math.floor(hitBase[0] * 0.90) +
+    Math.floor(hitBase[1] * 0.90) +
+    Math.floor(hitBase[2] * 0.90) +
+    setBonus;
+
+  const setAvg =
+    Math.floor(hitBase[0]) +
+    Math.floor(hitBase[1]) +
+    Math.floor(hitBase[2]) +
+    setBonus;
+
+  const setMax =
+    Math.floor(hitBase[0] * 1.10) +
+    Math.floor(hitBase[1] * 1.10) +
+    Math.floor(hitBase[2] * 1.10) +
+    setBonus;
+
+  const minPct = Math.min(100, setMin / enemyHP * 100);
+  const avgPct = Math.min(100, setAvg / enemyHP * 100);
+  const maxPct = Math.min(100, setMax / enemyHP * 100);
+
+  $("hpRemaining").style.width = (100 - maxPct) + "%";
+  $("hpVariation").style.width = (maxPct - minPct) + "%";
+  $("hpDamage").style.width = minPct + "%";
+
+  $("hpAverageMarker").style.left = (100 - avgPct) + "%";
+  $("hpMaxMarker").style.left = (100 - maxPct) + "%";
+
+  $("remainingHPText").textContent =
+    "平均時の残りHP：" + fmt(Math.max(0, enemyHP - setAvg));
+
+  $("setDamageText").textContent =
+    "1セットの平均ダメージ：" + fmt(setAvg);
+
+  calculateKillProbability(hitBase, setBonus, enemyHP);
+}
+
+/* 撃破確率計算 */
+function calculateKillProbability(hitBase, setBonus, enemyHP) {
+  let states = new Map([[0, 1]]);
+  const killProbabilities = [];
+  let totalKilled = 0;
+
+  const randomValues = [];
+
+  for (let r = 90; r <= 110; r++) {
+    randomValues.push(r);
+  }
+
+  const maxHits = 90;
+
+  for (let hit = 1; hit <= maxHits; hit++) {
+    const stage = (hit - 1) % 3;
+    const base = hitBase[stage];
+
+    // 3段目の終了時にセット加算
+    const bonus = stage === 2 ? setBonus : 0;
+
+    const nextStates = new Map();
+    let killedThisHit = 0;
+
+    for (const [oldDamage, oldProbability] of states.entries()) {
+      for (const random of randomValues) {
+        const damage =
+          Math.floor(base * random / 100) + bonus;
+
+        const newDamage = oldDamage + damage;
+        const probability = oldProbability / 21;
+
+        if (newDamage >= enemyHP) {
+          killedThisHit += probability;
+        } else {
+          nextStates.set(
+            newDamage,
+            (nextStates.get(newDamage) || 0) + probability
+          );
+        }
+      }
+    }
+
+    killProbabilities.push(killedThisHit);
+    totalKilled += killedThisHit;
+    states = nextStates;
+
+    if (states.size === 0) break;
+    if (totalKilled >= 1 - 1e-10) break;
+  }
+
+  const nonzero = [];
+
+  for (let i = 0; i < killProbabilities.length; i++) {
+    if (killProbabilities[i] > 1e-12) {
+      nonzero.push(i + 1);
+    }
+  }
+
+  if (nonzero.length === 0) {
+    $("guaranteed").textContent = "90発以内に未撃破";
+    $("hitRange").textContent = "計算上限到達";
+    $("probabilityResults").innerHTML =
+      `<p class="warning">90発以内に撃破できませんでした。設定を確認してください。</p>`;
+    return;
+  }
+
+  const minHit = nonzero[0];
+  const maxHit = nonzero[nonzero.length - 1];
+
+  if (totalKilled >= 1 - 1e-10) {
+    $("guaranteed").textContent = `${maxHit}発以内`;
+  } else {
+    $("guaranteed").textContent = "90発以内では未確定";
+  }
+
+  $("hitRange").textContent =
+    minHit === maxHit
+      ? `${minHit}発`
+      : `${minHit}～${maxHit}発`;
+
+  /* 確率一覧 */
+  let html = `
+    <h3>撃破する攻撃回数ごとの確率</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>撃破回数</th>
+          <th>確率</th>
+          <th>割合</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  for (let i = 0; i < killProbabilities.length; i++) {
+    const p = killProbabilities[i];
+
+    if (p < 0.000001) continue;
+
+    const percent = p * 100;
+
+    html += `
+      <tr>
+        <td>${i + 1}発</td>
+        <td>${percent.toFixed(4)}%</td>
+        <td>
+          <div class="prob-bar">
+            <div class="prob-fill"
+              style="width:${Math.min(100, percent)}%">
+            </div>
+          </div>
+        </td>
+      </tr>
+    `;
+  }
+
+  html += `
+      </tbody>
+    </table>
+    <p class="note">
+      撃破確率の合計：約${(totalKilled * 100).toFixed(4)}%
+    </p>
+  `;
+
+  $("probabilityResults").innerHTML = html;
+}
+
+/* 初期値に戻す */
+function resetValues() {
+  if (!confirm("すべての入力値を初期値に戻しますか？")) return;
+  location.reload();
+}
+
+/* 入力変更時に自動計算 */
+document.querySelectorAll("input, select").forEach(el => {
+  el.addEventListener("input", calculate);
+  el.addEventListener("change", calculate);
+});
+
+calculate();
+</script>
+
+</body>
+</html>
