@@ -687,7 +687,7 @@ function calculateStat(prefix, withBuff) {
   const type = num(prefix + "Type");
 
   const boosted = base + boost + over;
-  const supportValue = boosted * support / 100;
+  const supportValue = boosted * ((support / 100) + 1);
   const medalValue = base * medalRate / 100;
 
   let result =

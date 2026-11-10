@@ -1,0 +1,1008 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>バウンティラッシュ ダメージ計算機</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    padding: 20px;
+    background: #eef1f5;
+    color: #222;
+    font-family: Arial, "Meiryo", sans-serif;
+}
+
+.container {
+    max-width: 1000px;
+    margin: auto;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 25px;
+    font-size: 27px;
+}
+
+h2 {
+    font-size: 20px;
+    border-bottom: 2px solid #444;
+    padding-bottom: 8px;
+    margin-top: 0;
+}
+
+h3 {
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 15px;
+}
+
+.stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+}
+
+label {
+    font-size: 13px;
+    font-weight: bold;
+}
+
+input, select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #bbb;
+    border-radius: 6px;
+    font-size: 15px;
+    background: white;
+}
+
+input:focus, select:focus {
+    outline: 2px solid #7daeff;
+    border-color: #3978d7;
+}
+
+.panel {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+}
+
+.check-area {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.check-label {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.check-label input {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+}
+
+.result-main {
+    text-align: center;
+    padding: 15px;
+    background: #f3f6fa;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.result-main .number {
+    font-size: 36px;
+    font-weight: bold;
+    color: #d33;
+}
+
+.result-main .sub {
+    color: #555;
+    font-size: 14px;
+    margin-top: 5px;
+}
+
+.damage-results {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.damage-card {
+    background: #f4f5f7;
+    border-radius: 8px;
+    padding: 12px 5px;
+    text-align: center;
+}
+
+.damage-card .damage-number {
+    font-size: 20px;
+    font-weight: bold;
+    margin: 8px 0;
+}
+
+.damage-card .percent {
+    font-size: 12px;
+    color: #555;
+}
+
+.hp-title {
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.hp-bar {
+    position: relative;
+    width: 100%;
+    height: 35px;
+    background: #e94b4b;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+#minBar {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 100%;
+    background: #39b96b;
+    z-index: 1;
+}
+
+#rangeBar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0;
+    background: #f5cf45;
+    z-index: 2;
+}
+
+.marker {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    width: 3px;
+    z-index: 4;
+    transform: translateX(-50%);
+}
+
+#averageMarker {
+    background: white;
+    box-shadow: 0 0 2px #333;
+}
+
+#maxMarker {
+    background: black;
+}
+
+.bar-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: #555;
+}
+
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-top: 15px;
+    font-size: 12px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.legend-color {
+    width: 13px;
+    height: 13px;
+    border-radius: 3px;
+}
+
+.note {
+    font-size: 12px;
+    color: #666;
+    line-height: 1.7;
+}
+
+#error {
+    color: #d00;
+    font-weight: bold;
+    margin-top: 10px;
+    text-align: center;
+}
+
+button {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 7px;
+    background: #3978d7;
+    color: white;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #2864bd;
+}
+
+@media (max-width: 650px) {
+    body { padding: 10px; }
+    .grid { grid-template-columns: 1fr; }
+    .stat-grid { grid-template-columns: 1fr 1fr; }
+    .panel { padding: 15px; }
+    h1 { font-size: 22px; }
+    .result-main .number { font-size: 30px; }
+    .damage-card .damage-number { font-size: 16px; }
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<h1>バウンティラッシュ<br>ダメージ計算機</h1>
+
+<!-- 攻撃側 -->
+<div class="panel">
+<h2>攻撃側</h2>
+
+<div class="grid">
+
+<div>
+<h3>攻撃力ステータス</h3>
+
+<div class="stat-grid">
+
+<div class="field">
+<label>基礎攻撃力</label>
+<input type="number" id="atkBase" value="1000">
+</div>
+
+<div class="field">
+<label>ブースト</label>
+<input type="number" id="atkBoost" value="0">
+</div>
+
+<div class="field">
+<label>超ブースト</label>
+<input type="number" id="atkOver" value="0">
+</div>
+
+<div class="field">
+<label>サポート (%)</label>
+<input type="number" id="atkSupport" value="100" step="0.1">
+</div>
+
+<div class="field">
+<label>メダル増加 (%)</label>
+<input type="number" id="atkMedalRate" value="0">
+</div>
+
+<div class="field">
+<label>メダル固定値</label>
+<input type="number" id="atkMedalFlat" value="0">
+</div>
+
+<div class="field">
+<label>タイプ効果</label>
+<select id="atkType">
+<option value="0">0</option>
+<option value="10">10</option>
+<option value="20">20</option>
+<option value="40">40</option>
+<option value="80">80</option>
+<option value="200">200</option>
+</select>
+</div>
+
+<div class="field">
+<label>バフ (%)</label>
+<input type="number" id="atkBuff" value="0">
+</div>
+
+<div class="field">
+<label>デバフ (%)</label>
+<input type="number" id="atkDebuff" value="0">
+</div>
+
+</div>
+</div>
+
+<div>
+<h3>攻撃設定</h3>
+
+<div class="field">
+<label>スキル威力</label>
+<input type="number" id="skill" value="1000">
+</div>
+
+<div class="field" style="margin-top:10px;">
+<label>攻撃側の属性</label>
+<select id="myAttribute">
+<option value="red">赤</option>
+<option value="blue">青</option>
+<option value="green">緑</option>
+<option value="white">白</option>
+<option value="black">黒</option>
+</select>
+</div>
+
+<div class="field" style="margin-top:10px;">
+<label>ダメージ増加率 (%)</label>
+<input type="number" id="increase" value="0">
+</div>
+
+<div class="check-area">
+<label class="check-label">
+<input type="checkbox" id="ignoreDefense">
+防御無視スキル
+</label>
+
+<label class="check-label">
+<input type="checkbox" id="ignoreDamageReduction">
+ダメージ減少無視スキル
+</label>
+</div>
+</div>
+
+</div>
+</div>
+
+<!-- 防御側 -->
+<div class="panel">
+<h2>防御側</h2>
+
+<div class="grid">
+
+<div>
+<h3>防御力ステータス</h3>
+
+<div class="stat-grid">
+
+<div class="field">
+<label>基礎防御力</label>
+<input type="number" id="defBase" value="1000">
+</div>
+
+<div class="field">
+<label>ブースト</label>
+<input type="number" id="defBoost" value="0">
+</div>
+
+<div class="field">
+<label>超ブースト</label>
+<input type="number" id="defOver" value="0">
+</div>
+
+<div class="field">
+<label>サポート (%)</label>
+<input type="number" id="defSupport" value="100" step="0.1">
+</div>
+
+<div class="field">
+<label>メダル増加 (%)</label>
+<input type="number" id="defMedalRate" value="0">
+</div>
+
+<div class="field">
+<label>メダル固定値</label>
+<input type="number" id="defMedalFlat" value="0">
+</div>
+
+<div class="field">
+<label>タイプ効果</label>
+<select id="defType">
+<option value="0">0</option>
+<option value="10">10</option>
+<option value="20">20</option>
+<option value="40">40</option>
+<option value="80">80</option>
+<option value="200">200</option>
+</select>
+</div>
+
+<div class="field">
+<label>バフ (%)</label>
+<input type="number" id="defBuff" value="0">
+</div>
+
+<div class="field">
+<label>デバフ (%)</label>
+<input type="number" id="defDebuff" value="0">
+</div>
+
+</div>
+</div>
+
+<div>
+<h3>HPステータス</h3>
+
+<div class="stat-grid">
+
+<div class="field">
+<label>基礎HP</label>
+<input type="number" id="hpBase" value="10000">
+</div>
+
+<div class="field">
+<label>ブースト</label>
+<input type="number" id="hpBoost" value="0">
+</div>
+
+<div class="field">
+<label>超ブースト</label>
+<input type="number" id="hpOver" value="0">
+</div>
+
+<div class="field">
+<label>サポート (%)</label>
+<input type="number" id="hpSupport" value="100" step="0.1">
+</div>
+
+<div class="field">
+<label>メダル増加 (%)</label>
+<input type="number" id="hpMedalRate" value="0">
+</div>
+
+<div class="field">
+<label>メダル固定値</label>
+<input type="number" id="hpMedalFlat" value="0">
+</div>
+
+<div class="field">
+<label>タイプ効果</label>
+<select id="hpType">
+<option value="0">0</option>
+<option value="40">40</option>
+<option value="80">80</option>
+<option value="160">160</option>
+<option value="320">320</option>
+<option value="800">800</option>
+</select>
+</div>
+
+</div>
+
+<div class="field" style="margin-top:15px;">
+<label>防御側の属性</label>
+<select id="enemyAttribute">
+<option value="red">赤</option>
+<option value="blue">青</option>
+<option value="green">緑</option>
+<option value="white">白</option>
+<option value="black">黒</option>
+</select>
+</div>
+
+<div class="field" style="margin-top:15px;">
+<label>ダメージ減少率 (%)</label>
+<input type="number" id="decrease" value="0">
+</div>
+
+</div>
+</div>
+</div>
+
+<!-- 追加ダメージ -->
+<div class="panel">
+<h2>追加ダメージ設定</h2>
+
+<div class="grid">
+
+<div class="field">
+<label>固定ダメージ</label>
+<input type="number" id="fixedDamage" value="0" min="0">
+</div>
+
+<div class="field">
+<label>割合ダメージ (%)</label>
+<input type="number" id="percentDamage" value="0" min="0">
+</div>
+
+</div>
+
+<p class="note">
+固定ダメージ：攻撃力・防御力・属性・ダメージ増加率・ダメージ減少率を無視して加算します。<br>
+割合ダメージ：相手の<strong>最大HP</strong>を基準に計算します。現在HPは基準にしません。<br>
+固定ダメージ・割合ダメージは、最大・平均・最小ダメージのすべてに同じ数値を加算します。
+</p>
+</div>
+
+<!-- 結果 -->
+<div class="panel">
+<h2>ダメージ結果</h2>
+
+<div class="result-main">
+<div>平均ダメージ</div>
+<div class="number" id="averageDamage">0</div>
+<div class="sub" id="averagePercent">最大体力の 0.0% 減少</div>
+</div>
+
+<div id="attributeResult" style="font-weight:bold;text-align:center;margin:15px 0;">
+属性相性：0%
+</div>
+
+<div class="damage-results">
+
+<div class="damage-card">
+<div>最大ダメージ</div>
+<div class="damage-number" id="maxDamage">0</div>
+<div class="percent" id="maxPercent">0.0% 減少</div>
+</div>
+
+<div class="damage-card">
+<div>平均ダメージ</div>
+<div class="damage-number" id="averageBarDamage">0</div>
+<div class="percent" id="averageBarPercent">0.0% 減少</div>
+</div>
+
+<div class="damage-card">
+<div>最小ダメージ</div>
+<div class="damage-number" id="minDamage">0</div>
+<div class="percent" id="minPercent">0.0% 減少</div>
+</div>
+
+</div>
+
+<div class="hp-title">ダメージ後の残りHP</div>
+
+<div class="hp-bar">
+<div id="minBar"></div>
+<div id="rangeBar"></div>
+<div id="averageMarker" class="marker"></div>
+<div id="maxMarker" class="marker"></div>
+</div>
+
+<div class="bar-labels">
+<span>残りHP 100%</span>
+<span>残りHP 0%</span>
+</div>
+
+<div class="legend">
+
+<div class="legend-item">
+<span class="legend-color" style="background:#39b96b;"></span>
+残りHP
+</div>
+
+<div class="legend-item">
+<span class="legend-color" style="background:#f5cf45;"></span>
+ダメージ変動範囲
+</div>
+
+<div class="legend-item">
+<span class="legend-color" style="background:#e94b4b;"></span>
+削れたHP
+</div>
+
+<div class="legend-item">
+<span class="legend-color" style="background:white;border:1px solid #555;"></span>
+平均ダメージ位置
+</div>
+
+<div class="legend-item">
+<span class="legend-color" style="background:black;"></span>
+最大ダメージ位置
+</div>
+
+</div>
+
+<div id="error"></div>
+
+<p class="note">
+※最大・平均・最小ダメージは乱数180・200・220で計算しています。<br>
+※HPバーは固定・割合ダメージを含めた最終ダメージで表示します。
+</p>
+
+</div>
+
+<button type="button" id="resetButton">初期値に戻す</button>
+
+</div>
+
+<script>
+
+// 数値を見やすく表示
+function formatNumber(value) {
+    return Math.floor(value).toLocaleString("ja-JP");
+}
+
+// ステータス計算
+function calculateStat(type) {
+
+    const base = Number(
+        document.getElementById(type + "Base").value
+    );
+
+    const boost = Number(
+        document.getElementById(type + "Boost").value
+    );
+
+    const over = Number(
+        document.getElementById(type + "Over").value
+    );
+
+    const support = Number(
+        document.getElementById(type + "Support").value
+    );
+
+    const medalRate = Number(
+        document.getElementById(type + "MedalRate").value
+    );
+
+    const medalFlat = Number(
+        document.getElementById(type + "MedalFlat").value
+    );
+
+    const typeEffect = Number(
+        document.getElementById(type + "Type").value
+    );
+
+    const values = [
+        base, boost, over, support,
+        medalRate, medalFlat, typeEffect
+    ];
+
+    if (!values.every(Number.isFinite) ||
+        base < 0 ||
+        boost < 0 ||
+        over < 0 ||
+        support < 0 ||
+        medalRate < 0 ||
+        medalFlat < 0 ||
+        typeEffect < 0) {
+
+        throw new Error("ステータスの入力値を確認してください。");
+    }
+
+    // 既存の最終ステータス計算
+    const boosted = base + boost + over;
+
+    const supportValue =
+        boosted * ((support / 100) + 1);
+
+    const medalValue =
+        base * medalRate / 100;
+
+    const finalStat =
+        supportValue + medalValue + medalFlat + typeEffect;
+
+    // HPにはバフ・デバフを適用しない
+    if (type === "hp") {
+        return finalStat;
+    }
+
+    // 攻撃力・防御力にバフ・デバフを適用
+    const buff = Number(
+        document.getElementById(type + "Buff").value
+    );
+
+    const debuff = Number(
+        document.getElementById(type + "Debuff").value
+    );
+
+    if (!Number.isFinite(buff) ||
+        !Number.isFinite(debuff) ||
+        buff < 0 ||
+        debuff < 0 ||
+        debuff > 100) {
+
+        throw new Error("バフ・デバフの入力値を確認してください。");
+    }
+
+    // 最終ステータスに対して乗算
+    return finalStat *
+        (1 + buff / 100) *
+        (1 - debuff / 100);
+}
+
+// 属性相性表
+const attributeTable = {
+
+    red: {
+        red: 0,
+        blue: -30,
+        green: 30,
+        white: -20,
+        black: 20
+    },
+
+    blue: {
+        red: 30,
+        blue: 0,
+        green: -30,
+        white: -20,
+        black: 20
+    },
+
+    green: {
+        red: -30,
+        blue: 30,
+        green: 0,
+        white: -20,
+        black: 20
+    },
+
+    white: {
+        red: 20,
+        blue: 20,
+        green: 20,
+        white: 0,
+        black: -40
+    },
+
+    black: {
+        red: -20,
+        blue: -20,
+        green: -20,
+        white: 40,
+        black: 0
+    }
+
+};
+
+// ダメージ計算
+function calculate() {
+
+    const error = document.getElementById("error");
+    error.textContent = "";
+
+    try {
+
+        // ステータス計算
+        const attack = calculateStat("atk");
+        const defense = calculateStat("def");
+        const hp = calculateStat("hp");
+
+        // 通常ダメージ設定
+        const skill =
+            Number(document.getElementById("skill").value);
+
+        const increase =
+            Number(document.getElementById("increase").value);
+
+        const decrease =
+            Number(document.getElementById("decrease").value);
+
+        // 固定・割合ダメージ設定
+        const fixedDamage =
+            Number(document.getElementById("fixedDamage").value);
+
+        const percentDamage =
+            Number(document.getElementById("percentDamage").value);
+
+        // 入力値チェック
+        const values = [
+            skill, increase, decrease,
+            fixedDamage, percentDamage
+        ];
+
+        if (!values.every(Number.isFinite) ||
+            skill < 0 ||
+            increase < -100 ||
+            decrease < 0 ||
+            decrease > 100 ||
+            fixedDamage < 0 ||
+            percentDamage < 0 ||
+            hp <= 0 ||
+            attack <= 0 ||
+            defense < 0) {
+
+            throw new Error("入力値を確認してください。");
+        }
+
+        // 属性
+        const myAttribute =
+            document.getElementById("myAttribute").value;
+
+        const enemyAttribute =
+            document.getElementById("enemyAttribute").value;
+
+        // 防御無視
+        const ignore =
+            document.getElementById("ignoreDefense").checked;
+
+        // ダメージ減少無視
+        const ignoreDamageReduction =
+            document.getElementById("ignoreDamageReduction").checked;
+
+        // 防御無視の適用
+        const actualDefense =
+            ignore ? 0 : defense;
+
+        // ダメージ減少無視の適用
+        const actualDecrease =
+            ignoreDamageReduction ? 0 : decrease;
+
+        // 属性相性
+        const attributeRate =
+            attributeTable[myAttribute][enemyAttribute];
+
+        const attributeMultiplier =
+            1 + attributeRate / 100;
+
+        // 通常ダメージの補正
+        const damageMultiplier =
+            (1 + increase / 100) *
+            (1 - actualDecrease / 100);
+
+        // 固定・割合ダメージの合計
+        // 割合ダメージは相手の最大HPを基準にする
+        const additionalDamage =
+            fixedDamage + hp * percentDamage / 100;
+
+        // 通常ダメージ計算
+        function getNormalDamage(random) {
+
+            const A = attack / random * skill;
+
+            const B =
+                0.5 * A +
+                ((attack - actualDefense) / attack) * 0.5 * A;
+
+            return Math.max(
+                0,
+                B * damageMultiplier * attributeMultiplier
+            );
+        }
+
+        // 最大・平均・最小の通常ダメージ
+        const normalMax = getNormalDamage(180);
+        const normalAverage = getNormalDamage(200);
+        const normalMin = getNormalDamage(220);
+
+        // 追加ダメージを加算
+        const max = normalMax + additionalDamage;
+        const average = normalAverage + additionalDamage;
+        const min = normalMin + additionalDamage;
+
+        // HPに対する割合
+        const maxRate = max / hp * 100;
+        const averageRate = average / hp * 100;
+        const minRate = min / hp * 100;
+
+        // 属性表示
+        const attributeText =
+            attributeRate > 0
+                ? "+" + attributeRate + "%"
+                : attributeRate + "%";
+
+        document.getElementById("attributeResult").textContent =
+            "属性相性：" + attributeText;
+
+        // 平均ダメージ
+        document.getElementById("averageDamage").textContent =
+            formatNumber(average);
+
+        document.getElementById("averagePercent").textContent =
+            "最大体力の " + averageRate.toFixed(1) + "% 減少";
+
+        // ダメージ数値
+        document.getElementById("maxDamage").textContent =
+            formatNumber(max);
+
+        document.getElementById("averageBarDamage").textContent =
+            formatNumber(average);
+
+        document.getElementById("minDamage").textContent =
+            formatNumber(min);
+
+        // 削れたHPの割合
+        document.getElementById("maxPercent").textContent =
+            maxRate.toFixed(1) + "% 減少";
+
+        document.getElementById("averageBarPercent").textContent =
+            averageRate.toFixed(1) + "% 減少";
+
+        document.getElementById("minPercent").textContent =
+            minRate.toFixed(1) + "% 減少";
+
+        // 残りHPの割合
+        const maxRemain = Math.max(0, 100 - maxRate);
+        const averageRemain = Math.max(0, 100 - averageRate);
+        const minRemain = Math.max(0, 100 - minRate);
+
+        // バーの位置を0～100%に制限
+        const maxPos = Math.min(100, maxRemain);
+        const averagePos = Math.min(100, averageRemain);
+        const minPos = Math.min(100, minRemain);
+
+        // 最大ダメージ後の残りHP
+        document.getElementById("minBar").style.width =
+            maxPos + "%";
+
+        // ダメージ変動範囲
+        const rangeBar =
+            document.getElementById("rangeBar");
+
+        rangeBar.style.left = maxPos + "%";
+
+        rangeBar.style.width =
+            Math.max(0, minPos - maxPos) + "%";
+
+        // 平均ダメージ後の残りHP
+        document.getElementById("averageMarker").style.left =
+            averagePos + "%";
+
+        // 最大ダメージ後の残りHP
+        document.getElementById("maxMarker").style.left =
+            maxPos + "%";
+
+    } catch (e) {
+
+        error.textContent = e.message;
+
+    }
+}
+
+// 全入力項目の変更を監視
+document.querySelectorAll("input, select").forEach(element => {
+
+    element.addEventListener("input", calculate);
+    element.addEventListener("change", calculate);
+
+});
+
+// 初期値に戻す
+document.getElementById("resetButton").addEventListener("click", () => {
+
+    document.querySelectorAll("input").forEach(element => {
+
+        if (element.type === "checkbox") {
+            element.checked = false;
+        } else {
+            element.value = element.defaultValue;
+        }
+
+    });
+
+    document.querySelectorAll("select").forEach(element => {
+        element.selectedIndex = 0;
+    });
+
+    calculate();
+
+});
+
+// 最初の計算
+calculate();
+
+</script>
+</body>
+</html>
